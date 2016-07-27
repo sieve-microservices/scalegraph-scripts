@@ -1,0 +1,8 @@
+numpy==1.11.0
+pandas
+seaborn
+ipython
+statsmodels
+jinja2
+sklearn
+ipyparallel
