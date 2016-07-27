@@ -20,12 +20,12 @@ def cluster_services(path):
     def _cluster_service(args):
         import cluster
         return cluster.cluster_service(*args)
-    def iterate():
-        for cluster_size in range(1, 8):
-            for service in data["services"]:
-                yield (path, service, cluster_size)
-    total = sum(1 for _ in iterate())
-    return lview.map(_cluster_service, iterate()), total
+    ids = []
+    for cluster_size in range(1, 8):
+        for service in data["services"]:
+            res = lview.apply_async(_cluster_service, (path, service, cluster_size))
+            ids.extend(res.msg_ids)
+    return ids
 
 def adfuller(paths):
     def _draw(path):
@@ -63,20 +63,16 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.stderr.write("USAGE: %s measurement\n" % sys.argv[0])
         sys.exit(1)
-    paths = sys.argv[1:]
-    for i, _ in enumerate(adfuller(paths)):
-        print("progress: %d/%d" % (i, len(paths)))
+    #paths = sys.argv[1:]
+    #for i, _ in enumerate(adfuller(paths)):
+    #    print("progress: %d/%d" % (i, len(paths)))
 
-    #total = 0
-    #iters = []
-    #for arg in sys.argv[1:]:
-    #    #find_causality(arg)
-    #    #increase_cluster_size(arg)
-    #    iter, count = cluster_services(arg)
-    #    total += count
-    #    iters.append(iter)
-    #for i, iter in enumerate(iters):
-    #    for j, rc in enumerate(iter):
-    #        print("progress: %d/%d" % (i + j, total))
+    total = 0
+    ids = []
+    for arg in sys.argv[1:]:
+        #find_causality(arg)
+        #increase_cluster_size(arg)
+        ids.extend(cluster_services(arg))
+    lview.get_result(ids, owner=False).wait_interactive()
 
     #draw_graphs(sys.argv[1:])
