@@ -1,7 +1,8 @@
 import socket
-import ipyparallel as ipp
+from ipyparallel import Client
 
-rc = ipp.Client()
-ar = rc[:].apply_async(socket.gethostname)
+rc = Client()
+lview = rc.load_balanced_view()
+ar = lview.apply_async(socket.gethostname)
 pid_map = ar.get_dict()
 print(pid_map)
