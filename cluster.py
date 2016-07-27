@@ -32,6 +32,7 @@ def do_kshape(name_prefix, df, cluster_size):
         matrix.append(zscore(df[c]))
     res = kshape(matrix, cluster_size)
     score = silhouette_score(np.array(matrix), res)
+    filenames = []
     for i, (centroid, assigned_series) in enumerate(res):
         d = {}
         for serie in assigned_series:
@@ -41,10 +42,12 @@ def do_kshape(name_prefix, df, cluster_size):
         figure = df2.plot()
         figure.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         name = "%s_%d" % (name_prefix, (i+1))
-        print(name + ".tsv")
-        df2.to_csv(name + ".tsv", sep="\t")
+        filename = name + ".tsv.gz"
+        print(filename)
+        df2.to_csv(filename, sep="\t", compression='gzip')
+        filenames.append(os.path.basename(filename))
         graphs.write(df2, name + ".png")
-    return score
+    return score, filenames
 
 def cluster_service(path, service, cluster_size):
     prefix = "%s/%s-cluster-%d" % (path, service["name"], cluster_size)
@@ -53,7 +56,7 @@ def cluster_service(path, service, cluster_size):
         return
     filename = os.path.join(path, service["preprocessed_filename"])
     df = pd.read_csv(filename, sep="\t", index_col='time', parse_dates=True)
-    score = do_kshape(prefix, df, cluster_size)
+    score, filenames = do_kshape(prefix, df, cluster_size)
     if cluster_size < 2:
         # no silhouette_score for cluster size 1
         return
@@ -63,7 +66,8 @@ def cluster_service(path, service, cluster_size):
             if srv["name"] == service["name"]:
                 if "clusters" not in srv:
                     srv["clusters"] = {}
-                srv["clusters"][cluster_size] = dict(silhouette_score=score)
+                d = dict(silhouette_score=score, filenames=filenames)
+                srv["clusters"][cluster_size] = d
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
