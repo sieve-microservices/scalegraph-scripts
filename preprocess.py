@@ -1,6 +1,8 @@
 import os
 import sys
+from collections import defaultdict
 import pandas as pd
+import numpy as np
 import metadata
 
 def load_timeseries(filename, service):
@@ -9,13 +11,27 @@ def load_timeseries(filename, service):
         df = df[df["cpu"].isnull() | (df["cpu"] == "cpu-total")]
     return df[service["fields"]]
 
-def filter_constant_series(df):
-    columns = []
+def is_monotonic(serie):
+    if serie.dtype == np.float64:
+        return pd.algos.is_monotonic_float64(serie.values, False)
+    elif serie.dtype == np.int64:
+        return pd.algos.is_monotonic_int64(serie.values, False)
+    else:
+        raise ValueError("unexpected column type: %s" % serie.dtype)
+
+def classify_series(df):
+    classes = defaultdict(list)
     for c in df.columns:
-        if df[c].isnull().any() or df[c].var() == 0:
-            continue
-        columns.append(c)
-    return df[columns]
+        if df[c].isnull().any():
+            key = "empty_fields"
+        elif df[c].var() == 0:
+            key = "constant_fields"
+        elif is_monotonic(df[c]):
+            key = "monotonic_fields"
+        else:
+            key = "other_fields"
+        classes[key].append(c)
+    return classes
 
 def interpolate_missing(df):
     # might improve accuracy
@@ -31,11 +47,19 @@ def apply(path):
     for service in data["services"]:
         filename = os.path.join(path, service["filename"])
         df = load_timeseries(filename, service)
-        df2 = filter_constant_series(interpolate_missing(df))
+        df2 = interpolate_missing(df)
+        classes = classify_series(df2)
+        preprocessed_series = {}
+        for k in classes["other_fields"]:
+            preprocessed_series[k] = df2[k]
+        for k in classes["monotonic_fields"]:
+            preprocessed_series[k + "-diff"] = df2[k].diff()
         newname = service["name"] + "-preprocessed.tsv.gz"
-        df2.to_csv(os.path.join(path, newname), sep="\t", compression='gzip')
+        df3 = pd.DataFrame(preprocessed_series)
+        df3.to_csv(os.path.join(path, newname), sep="\t", compression='gzip')
         service["preprocessed_filename"] = newname
-        service["preprocessed_fields"] = [c for c in df2.columns]
+        service["preprocessed_fields"] = list(df3.columns)
+        service.update(classes)
     metadata.save(path, data)
 
 if __name__ == '__main__':
