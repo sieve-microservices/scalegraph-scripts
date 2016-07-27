@@ -53,7 +53,8 @@ def _atomic_write(filename):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        sys.stderr.write("USAGE: %s measurment\n" % sys.argv[0])
+        sys.stderr.write("USAGE: %s measurment...\n" % sys.argv[0])
         sys.exit(1)
-    with update(sys.argv[1]) as m:
-        print(m)
+    for arg in sys.argv[1:]:
+        with update(arg) as m:
+            pass
