@@ -32,8 +32,8 @@ def apply(path):
         filename = os.path.join(path, service["filename"])
         df = load_timeseries(filename, service)
         df2 = filter_constant_series(interpolate_missing(df))
-        newname = service["name"] + "-preprocessed.tsv"
-        df2.to_csv(os.path.join(path, newname), sep="\t")
+        newname = service["name"] + "-preprocessed.tsv.gz"
+        df2.to_csv(os.path.join(path, newname), sep="\t", compression='gzip')
         service["preprocessed_filename"] = newname
         service["preprocessed_fields"] = [c for c in df2.columns]
     metadata.save(path, data)
