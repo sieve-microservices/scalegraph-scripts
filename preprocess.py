@@ -13,9 +13,9 @@ def load_timeseries(filename, service):
 
 def is_monotonic(serie):
     if serie.dtype == np.float64:
-        return pd.algos.is_monotonic_float64(serie.values, False)
+        return pd.algos.is_monotonic_float64(serie.values, False)[0]
     elif serie.dtype == np.int64:
-        return pd.algos.is_monotonic_int64(serie.values, False)
+        return pd.algos.is_monotonic_int64(serie.values, False)[0]
     else:
         raise ValueError("unexpected column type: %s" % serie.dtype)
 
@@ -47,13 +47,14 @@ def apply(path):
     for service in data["services"]:
         filename = os.path.join(path, service["filename"])
         df = load_timeseries(filename, service)
-        df2 = interpolate_missing(df)
+        df2 = interpolate_missing(df[service["fields"]])
         classes = classify_series(df2)
         preprocessed_series = {}
         for k in classes["other_fields"]:
-            preprocessed_series[k] = df2[k]
+            # short by one value, because we have to short the other one!
+            preprocessed_series[k] = df2[k][1:]
         for k in classes["monotonic_fields"]:
-            preprocessed_series[k + "-diff"] = df2[k].diff()
+            preprocessed_series[k + "-diff"] = df2[k].diff()[1:]
         newname = service["name"] + "-preprocessed.tsv.gz"
         df3 = pd.DataFrame(preprocessed_series)
         df3.to_csv(os.path.join(path, newname), sep="\t", compression='gzip')
