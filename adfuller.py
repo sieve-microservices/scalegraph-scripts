@@ -5,30 +5,18 @@ import pandas as pd
 import numpy as np
 import scipy.stats as stats
 from statsmodels.tsa.stattools import adfuller
-from preprocess import filter_constant_series, load_timeseries
+from preprocess import load_timeseries, classify_series
 import math
 
 def do_adfuller(path, srv, p_values):
     filename = os.path.join(path, srv["filename"])
     df = load_timeseries(filename, srv)
-    columns = []
-    for c in df.columns:
-        if (not df[c].isnull().all()) and df[c].var() != 0:
-            columns.append(c)
-    df = df[columns]
-    n = len(columns)
-    if n == 0: return []
-
+    classes = classify_series(df)
+    if len(classes["other_fields"]) == 0 and len(classes["monotonic_fields"]) == 0:
+        return []
     for i, col in enumerate(df.columns):
         serie = df[col].dropna()
-        if serie.dtype == np.float64:
-            is_monotonic = pd.algos.is_monotonic_float64
-        elif serie.dtype == np.int64:
-            is_monotonic = pd.algos.is_monotonic_int64
-        else:
-            raise ValueError("unexpected column type: %s" % serie.dtype)
-
-        if is_monotonic(serie.values, False)[0]:
+        if col in classes["monotonic_fields"]:
             serie = serie.diff()[1:]
 
         for reg in p_values:
