@@ -55,7 +55,6 @@ def read_service(srv, path):
     new_names = []
     for column in df.columns:
         res = adfuller(df[column])
-        import pdb; pdb.set_trace()
         if column.startswith(srv["name"]):
             new_names.append(column)
         else:
