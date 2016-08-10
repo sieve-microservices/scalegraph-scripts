@@ -8,7 +8,6 @@ import itertools
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests, adfuller
-from scipy.stats.mstats import normaltest
 
 import metadata
 from kshape import zscore, _sbd
@@ -24,13 +23,13 @@ def preferred_cluster(clusters):
             preferred_value = v["silhouette_score"]
     return preferred
 
-def best_column_of_cluster(service_name, path, cluster_size):
+def best_column_of_cluster(filenames, path):
     selected_columns = {}
     index = None
-    for i in range(1, cluster_size + 1):
+    for filename in filenames:
         best_distance = np.inf
         best_column = None
-        cluster_path = os.path.join(path, "%s-cluster-%d_%d.tsv" % (service_name, cluster_size, i))
+        cluster_path = os.path.join(path, filename)
         df = pd.read_csv(cluster_path, sep="\t", index_col='time', parse_dates=True)
         for c in df.columns:
             if c == "centroid":
@@ -44,17 +43,18 @@ def best_column_of_cluster(service_name, path, cluster_size):
     return pd.DataFrame(data=selected_columns, index=df.index)
 
 def read_service(srv, path):
-    srv_path = os.path.join(path, srv["filename"])
     preferred = preferred_cluster(srv["clusters"])
     if preferred == 0:
+        srv_path = os.path.join(path, srv["preprocessed_filename"])
         df = pd.read_csv(srv_path, sep="\t", index_col='time', parse_dates=True)
-        df = df[srv["preprocessed_fields"]]
+        for c in df.columns:
+            df[c] = zscore(df[c])
     else:
-        df = best_column_of_cluster(srv["name"], path, preferred)
+        cluster = srv["clusters"][str(preferred)]
+        df = best_column_of_cluster(cluster["filenames"], path)
 
     new_names = []
     for column in df.columns:
-        res = adfuller(df[column])
         if column.startswith(srv["name"]):
             new_names.append(column)
         else:
@@ -66,7 +66,7 @@ def grangercausality(df, p_values, lags):
     c1 = df.columns[0]
     c2 = df.columns[1]
     try:
-        res = grangercausalitytests(zscore(df), lags, verbose=False)
+        res = grangercausalitytests(df, lags, verbose=False)
     except Exception as e:
         if df[c1].var() < 1e-30:
             print("low variance for %s, got: %s" % (c1, e))
@@ -94,8 +94,6 @@ def _compare_services(srv_a, srv_b, path):
     df.interpolate(method="time", limit_direction="both", inplace=True)
     df.fillna(method="bfill", inplace=True)
 
-    _, pval = normaltest(df)
-
     for c1, c2 in combine(df_a.columns, df_b.columns):
         if c1 == c2:
             continue
@@ -105,12 +103,12 @@ def _compare_services(srv_a, srv_b, path):
 
 def compare_services(srv_a, srv_b, path):
     print("%s -> %s" % (srv_a["name"], srv_b["name"]))
-    causality_file = os.path.join(path, "%s-%s-causality-callgraph-2.tsv" % (srv_a["name"], srv_b["name"]))
+    causality_file = os.path.join(path, "%s-%s-causality-callgraph.tsv.gz" % (srv_a["name"], srv_b["name"]))
     if os.path.exists(causality_file):
         print("skip %s" % causality_file)
         return
     df = _compare_services(srv_a, srv_b, path)
-    #df.to_csv(causality_file, sep="\t")
+    df.to_csv(causality_file, sep="\t", compression="gzip")
 
 def load_graph(callgraph_path):
     # TODO: replace with proper format (TGF), once I get my infrastruture
