@@ -81,7 +81,7 @@ def write_measurement(measurement, report):
             clusters = []
             for j in range(1, i+1):
                 name = "%s-cluster-%d_%d.png" % (srv["name"], i, j)
-                url = "https://gitlab.com/Mic92/measurements/raw/master/%s/%s" % (title, name)
+                url = "https://gitlab.com/micro-analytics/measurements2/raw/master/%s/%s" % (title, name)
                 clusters.append((name, j, url))
             args = dict(title=title, cluster_size=i, clusters=clusters)
             path = os.path.join(report, "%s-%s-%d.md" % (title, srv["name"], i))
