@@ -8,7 +8,7 @@ import itertools
 import cluster
 
 from graphs import draw_graph
-from grangercausality import compare_services
+from grangercausality import compare_services, load_graph
 import metadata
 
 from ipyparallel import Client
@@ -26,6 +26,7 @@ def cluster_services(path):
             res = lview.apply_async(_cluster_service, (path, service, cluster_size))
             ids.extend(res.msg_ids)
     return ids
+
 
 def adfuller(paths):
     def _draw(path):
@@ -48,11 +49,20 @@ def increase_cluster_size(path):
             for cluster_size in range(8, min(len(service["preprocessed_fields"]), 15)):
                 queue.enqueue_call(func=cluster_service, args=(path, service, cluster_size), timeout=3600*3)
 
-def find_causality(path):
-    queue = Queue(connection=Redis("jobqueue.local"))
+def find_causality(callgraph_path, path):
     data = metadata.load(path)
-    for srv_a, srv_b in itertools.product(data["services"], data["services"]):
-        queue.enqueue_call(func=compare_services, args=(srv_a, srv_b, path))
+    call_pairs = load_graph(callgraph_path)
+    services = {}
+    for srv in data["services"]:
+        services[srv["name"]] = srv
+    ids = []
+    def _compare_services(args):
+        from grangercausality import compare_services
+        compare_services(*args)
+    for srv_a, srv_b in call_pairs:
+        res = lview.apply_async(_compare_services, (services[srv_a], services[srv_b], path))
+        ids.extend(res.msg_ids)
+    return ids
 
 def draw_graphs(paths):
     queue = Queue(connection=Redis("jobqueue.local"))
@@ -70,9 +80,10 @@ if __name__ == "__main__":
     total = 0
     ids = []
     for arg in sys.argv[1:]:
-        #find_causality(arg)
-        #increase_cluster_size(arg)
-        ids.extend(cluster_services(arg))
+        res = find_causality("foo", arg)
+        #res = increase_cluster_size(arg)
+        #res = cluster_services(arg)
+        ids.extend(res)
     lview.get_result(ids, owner=False).wait_interactive()
 
     #draw_graphs(sys.argv[1:])
