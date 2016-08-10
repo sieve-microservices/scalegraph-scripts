@@ -4,7 +4,7 @@ import pandas as pd
 from plot import plt, sns
 import scipy.stats as stats
 from scipy.stats import shapiro, normaltest
-from preprocess import filter_constant_series, load_timeseries
+from preprocess import load_timeseries
 
 def draw(path):
     data = metadata.load(path)
