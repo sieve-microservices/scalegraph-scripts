@@ -12,10 +12,12 @@ def zscore(a, axis=0, ddof=0):
     mns = a.mean(axis=axis)
     sstd = a.std(axis=axis, ddof=ddof)
     if axis and mns.ndim < a.ndim:
-        return ((a - np.expand_dims(mns, axis=axis)) /
-                np.expand_dims(sstd,axis=axis))
+        res = (((a - np.expand_dims(mns, axis=axis)) /
+                np.expand_dims(sstd,axis=axis)))
     else:
-        return (a - mns) / sstd
+        res = (a - mns) / sstd
+    return np.nan_to_num(res)
+
 
 def roll_zeropad(a, shift, axis=None):
     a = np.asanyarray(a)
@@ -40,22 +42,6 @@ def roll_zeropad(a, shift, axis=None):
     else:
         return res
 
-# TODO vectorized version of _ncc_c
-#def _ncc_c(x,y):
-#    """
-#    >>> _ncc_c(np.array([[1,2,3,4]]), np.array([[1,2,3,4]]))
-#    array([[ 0.13333333,  0.36666667,  0.66666667,  1.        ,  0.66666667,
-#             0.36666667,  0.13333333]])
-#    >>> _ncc_c(np.array([[1,1,1]]), np.array([[1,1,1]]))
-#    array([[ 0.33333333,  0.66666667,  1.        ,  0.66666667,  0.33333333]])
-#    >>> _ncc_c(np.array([[1,2,3]]), np.array([[-1,-1,-1]]))
-#    array([[-0.15430335, -0.46291005, -0.9258201 , -0.77151675, -0.46291005]])
-#    """
-#    x_len = x.shape[1]
-#    fft_size = 1<<(2*x_len-1).bit_length()
-#    cc = ifftn(fftn(x, (fft_size,)) * np.conj(fftn(y, (fft_size,))))
-#    cc = np.concatenate((cc[:, -(x_len-1):], cc[:, :x_len]), axis=1)
-#    return np.real(cc) / (norm(x) * norm(y))
 
 def _ncc_c(x,y):
     """
@@ -93,7 +79,6 @@ def _sbd(x, y):
     return dist, yshift
 
 
-#@profile
 def _extract_shape(idx, x, j, cur_center):
     """
     >>> _extract_shape(np.array([0,1,2]), np.array([[1,2,3], [4,5,6]]), 1, np.array([0,3,4]))
@@ -125,6 +110,7 @@ def _extract_shape(idx, x, j, cur_center):
     p.fill(1.0/columns)
     p = np.eye(columns) - p
 
+    # these are the 2 most expensive operations
     m = np.dot(np.dot(p, s), p)
     _, vec = eigh(m)
     centroid = vec[:,-1]
