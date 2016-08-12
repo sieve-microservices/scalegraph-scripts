@@ -42,8 +42,7 @@ def roll_zeropad(a, shift, axis=None):
     else:
         return res
 
-
-def _ncc_c(x,y):
+def _ncc_c(x, y):
     """
     >>> _ncc_c([1,2,3,4], [1,2,3,4])
     array([ 0.13333333,  0.36666667,  0.66666667,  1.        ,  0.66666667,
@@ -53,11 +52,14 @@ def _ncc_c(x,y):
     >>> _ncc_c([1,2,3], [-1,-1,-1])
     array([-0.15430335, -0.46291005, -0.9258201 , -0.77151675, -0.46291005])
     """
+    den = np.array(norm(x) * norm(y))
+    den[den == 0] = np.Inf
+
     x_len = len(x)
     fft_size = 1<<(2*x_len-1).bit_length()
     cc = ifft(fft(x, fft_size) * np.conj(fft(y, fft_size)))
     cc = np.concatenate((cc[-(x_len-1):], cc[:x_len]))
-    return np.real(cc) / (norm(x) * norm(y))
+    return np.real(cc) / den
 
 def lag(x, y):
     return ((_ncc_c(x, y).argmax() + 1) - max(len(x), len(y))) * -1
