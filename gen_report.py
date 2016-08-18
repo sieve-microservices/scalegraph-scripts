@@ -11,11 +11,11 @@ INDEX = """
 # Measurement {{title}}
 
 ## Overview
-| Name | #Metrics | #Metrics exclu. constant | Cluster sizes | Silhouette score |
-|------|----------|--------------------------|---------------|------------------|
+| Name | #Metrics | #Metrics exclu. constant | Cluster sizes | Silhouette score | Grangercausality metrics |
+|------|----------|--------------------------|---------------|------------------|--------------------------|
 {% for _, runs in services -%}
 {% for _, r in runs.iterrows() -%}
-| {{r["name"]}} | {{r["fields"]|length}} | {{r["preprocessed_fields"]|length}} | {{cluster_links(r, r.title)}} | {{silhouette_score(r, r.title)}} |
+| {{r["name"]}} | {{r["fields"]|length}} | {{r["preprocessed_fields"]|length}} | {{cluster_links(r)}} | {{silhouette_score(r)}} | {{grangercausality(r)}}
 {% endfor -%}
 {% endfor %}
 """
@@ -23,9 +23,10 @@ INDEX = """
 CLUSTER = """
 # Measurement {{title}} with a cluster size: {{cluster_size}}
 
-{% for name,number,url in clusters -%}
+{% for name, number, url, selected_metric in clusters -%}
 ## Cluster {{number}}
-- ![{{name}}]({{url}})
+- {% if selected_metric is not none: %} Selected metric for grangercausality {{selected_metric}} {% endif %}
+  ![{{name}}]({{url}})
 {% endfor -%}
 """
 
@@ -33,16 +34,15 @@ def cluster_number(service):
     if "clusters" in service:
         return max(map(int, service["clusters"].keys()))
     else:
-        import pdb; pdb.set_trace()
         return 0
 
-def cluster_links(service, title):
+def cluster_links(service):
     links = []
     for i in range(1, cluster_number(service) + 1):
-        links.append("[%d](%s-%s-%d)" % (i, title, service["name"], i))
+        links.append("[%d](%s-%s-%d)" % (i, service.title, service["name"], i))
     return " ".join(links)
 
-def silhouette_score(row, title):
+def silhouette_score(row):
     res = []
     best = -1
     best_score = -1
@@ -55,8 +55,19 @@ def silhouette_score(row, title):
     if best == -1:
         res.append("-> no cluster found")
     else:
-        res.append("-> best [%s](%s-%s-%s)" % (best, title, row["name"], best))
+        res.append("-> best [%s](%s-%s-%s)" % (best, row.title, row["name"], best))
     return " ".join(res)
+
+def grangercausality(row):
+    for key, value in row.clusters.items():
+        metrics = value.get("grangercausality-metrics", None)
+        if metrics is None: continue
+        entries = []
+        for i, metric in enumerate(metrics):
+            if metric is not None:
+                entries.append("[%s](%s-%s-%s)" % (metric, row.title, row["name"], i))
+        return ", ".join(entries)
+    return ""
 
 def write_template(template, path, **kwargs):
     template = Environment().from_string(template)
@@ -77,14 +88,17 @@ def write_measurement(measurement, report):
         metrics_count += len(srv["fields"])
         metrics_set.update(srv["fields"])
         filtered_count += len(srv["preprocessed_fields"])
-        for i in range(1, cluster_number(srv) + 1):
+        for cluster_size, cluster in srv["clusters"].items():
+            i = int(cluster_size)
+            grangercausality_metrics = cluster.get("grangercausality_metrics", [None] * int(i))
             clusters = []
-            for j in range(1, i+1):
+            for j in range(1, i):
                 name = "%s-cluster-%d_%d.png" % (srv["name"], i, j)
                 url = "https://gitlab.com/micro-analytics/measurements2/raw/master/%s/%s" % (title, name)
-                clusters.append((name, j, url))
+                selected_metric = grangercausality_metrics[j]
+                clusters.append((name, j, url, selected_metric))
             args = dict(title=title, cluster_size=i, clusters=clusters)
-            path = os.path.join(report, "%s-%s-%d.md" % (title, srv["name"], i))
+            path = os.path.join(report, "%s-%s-%s.md" % (title, srv["name"], cluster_size))
             write_template(CLUSTER, path, **args)
     return title, data["services"]
 
@@ -99,7 +113,7 @@ def write(index_title, report, measurements):
             m["title"].append(title)
     df = pd.DataFrame(m).groupby("name")
     df["clusters"].fillna({})
-    args = dict(silhouette_score=silhouette_score, cluster_links=cluster_links, services=df, title=title)
+    args = dict(silhouette_score=silhouette_score, cluster_links=cluster_links, grangercausality=grangercausality, services=df, title=title)
     index = os.path.join(report, index_title + ".md")
     write_template(INDEX, index, **args)
 
