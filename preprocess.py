@@ -1,9 +1,9 @@
 import os
 import sys
-from collections import defaultdict
 import pandas as pd
 import numpy as np
 import metadata
+from kshape import zscore
 
 def load_timeseries(filename, service):
     df = pd.read_csv(filename, sep="\t", index_col='time', parse_dates=True)
@@ -20,12 +20,20 @@ def is_monotonic(serie):
         raise ValueError("unexpected column type: %s" % serie.dtype)
 
 def classify_series(df):
-    classes = defaultdict(list)
+    classes = {
+      "empty_fields": [],
+      "constant_fields": [],
+      "low_variance_fields": [],
+      "monotonic_fields": [],
+      "other_fields": [],
+    }
     for c in df.columns:
         if df[c].isnull().any():
             key = "empty_fields"
         elif df[c].var() == 0:
             key = "constant_fields"
+        elif zscore(df[c]).var() <= 1e-2:
+            key = "low_variance_fields"
         elif is_monotonic(df[c]):
             key = "monotonic_fields"
         else:
