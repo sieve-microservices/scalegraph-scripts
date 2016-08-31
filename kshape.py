@@ -124,7 +124,8 @@ def _extract_shape(idx, x, j, cur_center):
 
     return zscore(centroid, ddof=1)
 
-def _kshape(x, k):
+
+def _kshape(x, k, initial_clustering=None):
     """
     >>> from numpy.random import seed; seed(0)
     >>> _kshape(np.array([[1,2,3,4], [0,1,2,3], [-1,1,-1,1], [1,2,2,3]]), 2)
@@ -132,7 +133,11 @@ def _kshape(x, k):
            [-0.8660254 ,  0.8660254 , -0.8660254 ,  0.8660254 ]]))
     """
     m = x.shape[0]
-    idx = randint(0, k, size=m)
+    if initial_clustering is not None:
+        assert len(initial_clustering) == m, "Initial assigment does not match column length"
+        idx = initial_clustering
+    else:
+        idx = randint(0, k, size=m)
     centroids = np.zeros((k,x.shape[1]))
     distances = np.empty((m, k))
 
@@ -150,8 +155,8 @@ def _kshape(x, k):
 
     return idx, centroids
 
-def kshape(x, k):
-    idx, centroids = _kshape(np.array(x), k)
+def kshape(x, k, initial_clustering=None):
+    idx, centroids = _kshape(np.array(x), k, initial_clustering)
     clusters = []
     for i, centroid in enumerate(centroids):
         series = []
