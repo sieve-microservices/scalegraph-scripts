@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import numpy as np
 from sklearn.metrics import silhouette_score as _silhouette_score
+from metricsnamecluster import cluster_words
 
 import graphs
 from kshape import kshape, zscore, _sbd
@@ -25,12 +26,12 @@ def silhouette_score(series, clusters):
     else:
         return _silhouette_score(distances, labels, metric='precomputed')
 
-def do_kshape(name_prefix, df, cluster_size):
+def do_kshape(name_prefix, df, cluster_size, initial_clustering=None):
     columns = df.columns
     matrix = []
     for c in columns:
         matrix.append(zscore(df[c]))
-    res = kshape(matrix, cluster_size)
+    res = kshape(matrix, cluster_size, initial_clustering)
     score = silhouette_score(np.array(matrix), res)
     filenames = []
     for i, (centroid, assigned_series) in enumerate(res):
@@ -56,7 +57,13 @@ def cluster_service(path, service, cluster_size):
         return
     filename = os.path.join(path, service["preprocessed_filename"])
     df = pd.read_csv(filename, sep="\t", index_col='time', parse_dates=True)
-    score, filenames = do_kshape(prefix, df, cluster_size)
+    # TODO initial clustering based word cluster
+    #clustering = cluster_words(df.columns, service["name"], cluster_size)
+    #assignment = np.zeros(len(df.columns))
+    #for cluster, elements in enumerate(clustering):
+    #    for element in elements:
+    #        assignment[element] = cluster
+    score, filenames = do_kshape(prefix, df, cluster_size, initial_clustering=None)
     if cluster_size < 2:
         # no silhouette_score for cluster size 1
         return
