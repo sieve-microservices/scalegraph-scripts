@@ -330,7 +330,11 @@ doc: https://www.postgresql.org/docs/9.2/static/monitoring-stats.html#PG-STAT-DA
 - doc-updater-doc-not-blocking	inc
 
 
-# Actual application-specific metrics from metadata.json
+# Actual metrics from metadata.json
+
+Some metric names are not known in advance as they
+get created dynamically in the source code.
+Therefor I included here the metrics, I have observed.
 
 ## chat
 - chat-http-requests_room_project_id_messages_POST_201_count
