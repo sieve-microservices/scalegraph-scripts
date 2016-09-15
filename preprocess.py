@@ -1,7 +1,10 @@
 import os
 import sys
+import argparse
+
 import pandas as pd
 import numpy as np
+
 import metadata
 from kshape import zscore
 
@@ -23,58 +26,69 @@ def classify_series(df):
     classes = {
       "empty_fields": [],
       "constant_fields": [],
+      "low_frequency": [],
       "low_variance_fields": [],
       "monotonic_fields": [],
       "other_fields": [],
     }
     for c in df.columns:
-        if df[c].isnull().any():
+        column = df[c].dropna()
+        if len(column) == 0:
             key = "empty_fields"
-        elif df[c].var() == 0:
+        elif len(column)/len(df[c]) <= 0.001:
+            key = "low_frequency"
+        elif column.var() == 0:
             key = "constant_fields"
-        elif zscore(df[c]).var() <= 1e-2:
+        elif zscore(column).var() <= 1e-2:
             key = "low_variance_fields"
-        elif is_monotonic(df[c]):
+        elif is_monotonic(column):
             key = "monotonic_fields"
         else:
             key = "other_fields"
         classes[key].append(c)
     return classes
 
-def interpolate_missing(df):
-    # might improve accuracy
-    # df = df.interpolate(method="time", limit_direction="both")
-    # df.fillna(method="bfill", inplace=True)
+def interpolate_missing(df, sampling_rate):
     df = df.resample("500ms").mean()
-    df.interpolate(method="time", limit_direction="both", inplace=True)
-    df.fillna(method="bfill", inplace=True)
-    return df
+    cols = {}
+    for col in df.columns:
+        cols[col] = df[col].interpolate(method="spline", limit=2 * int(1/sampling_rate), order=3)
+    df2 = pd.DataFrame(cols)
+    return df2.fillna(method="bfill")
 
-def apply(path):
+
+def apply(path, sampling_rate):
     data = metadata.load(path)
     for service in data["services"]:
         filename = os.path.join(path, service["filename"])
+        newname = service["name"] + "-preprocessed.tsv.gz"
+        service["preprocessed_filename"] = newname
+        newpath = os.path.join(path, newname)
+        if os.path.exists(newpath):
+            print("skip %s" % newpath)
+            continue
         df = load_timeseries(filename, service)
-        df2 = interpolate_missing(df[service["fields"]])
-        classes = classify_series(df2)
+        classes = classify_series(df)
         preprocessed_series = {}
+        df2 = interpolate_missing(df[classes["other_fields"] + classes["monotonic_fields"]], sampling_rate)
         for k in classes["other_fields"]:
             # short by one value, because we have to short the other one!
             preprocessed_series[k] = df2[k][1:]
         for k in classes["monotonic_fields"]:
             preprocessed_series[k + "-diff"] = df2[k].diff()[1:]
-        newname = service["name"] + "-preprocessed.tsv.gz"
         df3 = pd.DataFrame(preprocessed_series)
-        df3.to_csv(os.path.join(path, newname), sep="\t", compression='gzip')
-        service["preprocessed_filename"] = newname
+        df3.to_csv(newpath, sep="\t", compression='gzip')
         service["preprocessed_fields"] = list(df3.columns)
         service.update(classes)
     metadata.save(path, data)
 
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        sys.stderr.write("USAGE: %s measurements\n" % sys.argv[0])
-        sys.exit(1)
+def parse_args():
+    parser = argparse.ArgumentParser(usage='%(prog)s [options]')
+    parser.add_argument('measurements', nargs='+', help="measurement directories to process")
+    parser.add_argument('--sampling-rate', action='store_true', default=(1/2), help="how often data is updated per second")
+    return parser.parse_args()
 
-    for p in sys.argv[1:]:
-        apply(p)
+if __name__ == '__main__':
+    args = parse_args()
+    for p in args.measurements:
+        apply(p, args.sampling_rate)
