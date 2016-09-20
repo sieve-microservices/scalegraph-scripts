@@ -35,7 +35,7 @@ def classify_series(df):
         column = df[c].dropna()
         if len(column) == 0:
             key = "empty_fields"
-        elif len(column)/len(df[c]) <= 0.001:
+        elif len(column)/len(df[c]) <= 0.002:
             key = "low_frequency"
         elif column.var() == 0:
             key = "constant_fields"
@@ -54,8 +54,17 @@ def interpolate_missing(df, sampling_rate):
     for col in df.columns:
         cols[col] = df[col].interpolate(method="spline", limit=2 * int(1/sampling_rate), order=3)
     df2 = pd.DataFrame(cols)
-    return df2.fillna(method="bfill")
+    return df2.fillna(value=0)
 
+def diff(df, monotonic_fields):
+    montonic = set(monotonic_fields)
+    series = {}
+    for c in df.columns:
+        if c in montonic:
+            series[c + "-diff"] = df[c].diff()[1:]
+        else:
+            series[c] = df[c][1:]
+    return pd.DataFrame(series)
 
 def apply(path, sampling_rate):
     data = metadata.load(path)
@@ -64,19 +73,14 @@ def apply(path, sampling_rate):
         newname = service["name"] + "-preprocessed.tsv.gz"
         service["preprocessed_filename"] = newname
         newpath = os.path.join(path, newname)
-        if os.path.exists(newpath):
+        if os.path.exists(newpath) and "other_fields" in service:
             print("skip %s" % newpath)
-            continue
+            #continue
         df = load_timeseries(filename, service)
         classes = classify_series(df)
         preprocessed_series = {}
         df2 = interpolate_missing(df[classes["other_fields"] + classes["monotonic_fields"]], sampling_rate)
-        for k in classes["other_fields"]:
-            # short by one value, because we have to short the other one!
-            preprocessed_series[k] = df2[k][1:]
-        for k in classes["monotonic_fields"]:
-            preprocessed_series[k + "-diff"] = df2[k].diff()[1:]
-        df3 = pd.DataFrame(preprocessed_series)
+        df3 = diff(df2, classes["monotonic_fields"])
         df3.to_csv(newpath, sep="\t", compression='gzip')
         service["preprocessed_fields"] = list(df3.columns)
         service.update(classes)

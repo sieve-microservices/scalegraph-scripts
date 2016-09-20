@@ -78,7 +78,7 @@ def cluster_service(path, service, cluster_size):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        sys.stderr.write("USAGE: %s measurement\n" % argv[0])
+        sys.stderr.write("USAGE: %s measurement\n" % sys.argv[0])
         sys.exit(1)
     path = sys.argv[1]
     for n in range(2, 7):
