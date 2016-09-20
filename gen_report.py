@@ -11,8 +11,8 @@ INDEX = """
 # Measurement {{title}}
 
 ## Overview
-| Name | #Metrics | #Metrics exclu. constant | Cluster sizes | Silhouette score | Grangercausality metrics |
-|------|----------|--------------------------|---------------|------------------|--------------------------|
+| Name | #Metrics | #Metrics exclu. constant | Cluster sizes | Silhouette score| Best | Grangercausality metrics |
+|------|----------|--------------------------|---------------|-----------------|------|--------------------------|
 {% for _, runs in services -%}
 {% for _, r in runs.iterrows() -%}
 | {{r["name"]}} | {{r["fields"]|length}} | {{r["preprocessed_fields"]|length}} | {{cluster_links(r)}} | {{silhouette_score(r)}} | {{grangercausality(r)}}
@@ -25,8 +25,11 @@ CLUSTER = """
 
 {% for name, number, url, selected_metric in clusters -%}
 ## Cluster {{number}}
-- {% if selected_metric is not none: %} Selected metric for grangercausality {{selected_metric}} {% endif %}
-  ![{{name}}]({{url}})
+{% if selected_metric is not none: -%}
+- Selected metric for grangercausality: **{{selected_metric}}**
+{% endif -%}
+- ![{{name}}]({{url}})
+
 {% endfor -%}
 """
 
@@ -53,9 +56,9 @@ def silhouette_score(row):
             best = key
             best_score = score
     if best == -1:
-        res.append("-> no cluster found")
+        res.append("| no good cluster found")
     else:
-        res.append("-> best [%s](%s-%s-%s)" % (best, row.title, row["name"], best))
+        res.append("| [%s](%s-%s-%s)" % (best, row.title, row["name"], best))
     return " ".join(res)
 
 def grangercausality(row):
@@ -65,7 +68,7 @@ def grangercausality(row):
         entries = []
         for i, metric in enumerate(metrics):
             if metric is not None:
-                entries.append("[%s](%s-%s-%s)" % (metric, row.title, row["name"], i))
+                entries.append("%s" % metric)
         return ", ".join(entries)
     return ""
 
@@ -85,17 +88,20 @@ def write_measurement(measurement, report):
     metrics_set = set()
     filtered_count = 0
     for srv in data["services"]:
+        if "preprocessed_fields" not in srv or "clusters" not in srv:
+            print("warning: no preprocessed_field found for %s/%s" % (measurement, srv["name"]))
+            continue
         metrics_count += len(srv["fields"])
         metrics_set.update(srv["fields"])
         filtered_count += len(srv["preprocessed_fields"])
         for cluster_size, cluster in srv["clusters"].items():
             i = int(cluster_size)
-            grangercausality_metrics = cluster.get("grangercausality_metrics", [None] * int(i))
+            grangercausality_metrics = cluster.get("grangercausality-metrics", [None] * int(i))
             clusters = []
-            for j in range(1, i):
+            for j in range(1, i + 1):
                 name = "%s-cluster-%d_%d.png" % (srv["name"], i, j)
                 url = "https://gitlab.com/micro-analytics/measurements2/raw/master/%s/%s" % (title, name)
-                selected_metric = grangercausality_metrics[j]
+                selected_metric = grangercausality_metrics[j - 1]
                 clusters.append((name, j, url, selected_metric))
             args = dict(title=title, cluster_size=i, clusters=clusters)
             path = os.path.join(report, "%s-%s-%s.md" % (title, srv["name"], cluster_size))
