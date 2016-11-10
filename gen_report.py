@@ -100,7 +100,7 @@ def write_measurement(measurement, report):
             clusters = []
             for j in range(1, i + 1):
                 name = "%s-cluster-%d_%d.png" % (srv["name"], i, j)
-                url = "https://gitlab.com/micro-analytics/measurements2/raw/master/%s/%s" % (title, name)
+                url = "https://gitlab.com/micro-analytics/measurements3/raw/master/%s/%s" % (title, name)
                 selected_metric = grangercausality_metrics[j - 1]
                 clusters.append((name, j, url, selected_metric))
             args = dict(title=title, cluster_size=i, clusters=clusters)
