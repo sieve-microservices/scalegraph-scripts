@@ -1,4 +1,4 @@
-numpy==1.11.0
+numpy
 pandas
 matplotlib
 seaborn
@@ -7,3 +7,4 @@ statsmodels
 jinja2
 sklearn
 ipyparallel
+influxdb
