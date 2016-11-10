@@ -8,8 +8,7 @@ def build_graph(image, paths):
     for i, col in enumerate(["p_for_lag_1", "p_for_lag_2", "p_for_lag_3", "p_for_lag_4"]):
         p_values = []
         for path in paths:
-            #df = pd.read_csv(path, sep="\t", dtype=dict(p_for_lag_1=np.float64))
-            df = pd.read_csv(path, sep="\t", compression='gzip')
+            df = pd.read_csv(path, sep="\t", compression='gzip', dtype=dict(p_for_lag_1=np.float64))
             # bug in causation!
             df.drop_duplicates(subset=["perpetrator", "consequence"], inplace=True)
             rows = df.iterrows()
