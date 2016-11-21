@@ -1,0 +1,31 @@
+{
+  "edges": [
+    {"from": "web", "to": "contacts"},
+    {"from": "web", "to": "chat"},
+    {"from": "web", "to": "doc-updater"},
+    {"from": "doc-updater", "to": "mongodb"},
+    {"from": "track-changes", "to":"redis"},
+    {"from": "chat", "to":"mongodb"},
+    {"from": "real-time", "to":"redis"},
+    {"from": "real-time", "to":"doc-updater"},
+    {"from": "doc-updater", "to":"web"},
+    {"from": "doc-updater", "to":"track-changes"},
+    {"from": "docstore", "to":"mongodb"},
+    {"from": "real-time", "to":"web"},
+    {"from": "web", "to":"tags"},
+    {"from": "web", "to":"filestore"},
+    {"from": "haproxy", "to":"web"},
+    {"from": "web", "to":"redis"},
+    {"from": "chat", "to":"web"},
+    {"from": "track-changes", "to":"web"},
+    {"from": "web", "to":"clsi"},
+    {"from": "web", "to":"docstore"},
+    {"from": "clsi", "to":"postgresql"},
+    {"from": "doc-updater", "to":"redis"},
+    {"from": "web", "to":"mongodb"},
+    {"from": "track-changes", "to":"mongodb"},
+    {"from": "contacts", "to":"mongodb"},
+    {"from": "haproxy", "to":"real-time"},
+    {"from": "web", "to":"spelling"}
+  ]
+}
