@@ -14,6 +14,8 @@ from graphs import cycle, draw_sbd_bar_plot
 from kshape import _sbd
 import matplotlib.gridspec as gridspec
 
+plt.rcParams.update({"font.family": "normal", "font.size": 40})
+
 def load_cluster_assignments(measurements):
     all_measurements = defaultdict(list)
     for m in measurements:
@@ -57,21 +59,38 @@ def print_cluster(idx, cluster):
         columns.remove("centroid")
         columns = ["centroid"] + columns
         df.reindex_axis(columns, axis=1)
+        df = df[df.columns[:20]]
 
         new_names = {}
         for c in columns:
-            new_names[c] = re.sub(r'^[^-]+-(.*)', r'\1', c)
+            new_names[c] = c.replace("-diff", "")\
+                    .replace(cluster.service + "-", "")\
+                    .replace("http-requests_", "http-") \
+                    .replace("output_output", "output") \
+                    .replace("mongo-requests_sharelatex", "mongodb") \
+                    .replace("query__id", "query") \
+                    .replace("doc_doc", "doc") \
+                    .replace("user_user", "user") \
+                    .replace("POST_200", "POST") \
+                    .replace("GET_200", "GET") \
+                    .replace("GET_500", "GET") \
+                    .replace("DELETE_200", "DELETE") \
+                    .replace("project_Project", "Project") \
+                    .replace("Project_Project", "Project") \
+                    .replace("90_percentile", "90%ile") \
+                    .replace('http-^\_project\_([^\_]*)\_output\_(_*)$_', "http_output") \
+                    .replace("_id", "")
         df.rename(columns=new_names, inplace=True)
 
         if len(df.columns) <= 1:
             size -= 1
             continue
-        if len(df.columns) > 15 and False:
-           fig = plt.figure(figsize=(15, 5))
-           gs = gridspec.GridSpec(3, 2)
-           ax1 = plt.subplot(gs[0, :2])
-           ax2 = plt.subplot(gs[0, 1])
-           ax3 = plt.subplot(gs[2, 0])
+        if len(df.columns) > 15:
+           fig = plt.figure(figsize=(17, 5))
+           gs = gridspec.GridSpec(3, 3)
+           ax1 = plt.subplot(gs[0:2,  :])
+           ax2 = plt.subplot(gs[2, 0])
+           ax3 = plt.subplot(gs[2, 2])
         else:
            fig = plt.figure(figsize=(10, 5))
            gs = gridspec.GridSpec(2, 2)
@@ -81,17 +100,28 @@ def print_cluster(idx, cluster):
 
         draw_series_seperate(df, ax1)
         ax2.axis('off')
-        ax2.legend(*ax1.get_legend_handles_labels(), loc='upper left', ncol=2)
+        if len(df.columns) <= 8:
+            ncol = 1
+        elif len(df.columns) >= 20:
+            ncol = 4
+        elif len(df.columns) >= 15:
+            ncol = 3
+        else:
+            ncol = 2
 
+        legend = ax2.legend(*ax1.get_legend_handles_labels(), loc='upper left', ncol=ncol)
         if df.centroid.notnull().any() and df.centroid.var() != 0:
             distances = []
             for c in df.columns:
                 if c == "centroid": continue
                 distances.append(_sbd(df.centroid, df[c])[0])
             draw_sbd_bar_plot(distances, ax3)
+            ax3.set_title("Shape based distance")
+            ax3.set_ylabel("")
             ax3.yaxis.tick_right()
 
         image = os.path.basename(name.replace(".tsv.gz", ".pdf"))
+        gs.tight_layout(fig, pad=0)
         plt.savefig(image, dpi=200)
         plt.close("all")
         imgs += '<img src="%s" alt="%s"></img>\n' % (image, image)
@@ -102,13 +132,12 @@ def print_cluster(idx, cluster):
 def main():
     args = parse_args()
     df = load_cluster_assignments(args.measurements)
-    df = df[(df.measurement == df.measurement.unique()[0]) & (df.selected)]
-    df = df.sort_values("silhouette_score")
+    df2 = df[(df.measurement == df.measurement.unique()[0]) & df.selected]
+    df2 = df.sort_values("silhouette_score")
 
-    bottom = df.iloc[0]
-    middle = df[df.service == "real-time"].iloc[0]
-    #middle = df[math.floor(len(df) / 3):math.floor(2 / 3.0 * len(df))].sample(1)
-    top = df.iloc[-1]
+    bottom = df2.iloc[0]
+    middle = df2[df2.selected & (df.service == "real-time")].iloc[0]
+    top = df2.iloc[-1]
 
     print("<html><head></head><body>")
 
@@ -119,7 +148,8 @@ def main():
     print_cluster(2, middle)
 
     print("<h1>Lower-quality cluster</h1>")
-    print_cluster(3, bottom)
+    df3 = df[df.selected & (df.measurement == df.measurement.unique()[1])]
+    print_cluster(3, df3[df3.service == "web"].iloc[0])
 
     print("</body></html>" )
 

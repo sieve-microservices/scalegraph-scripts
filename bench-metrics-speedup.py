@@ -123,7 +123,6 @@ def benchmark_import(stats, path, reduced_set=False):
         container.api.stop(container=container.id)
         after_size = du(mountpoint)
         stats["cpu_usage"].append(after["cpu_stats"]["cpu_usage"]["total_usage"] - before["cpu_stats"]["cpu_usage"]["total_usage"])
-        import pdb; pdb.set_trace()
         stats["blkio_read"].append(get_io(after)[0] - get_io(before)[0])
         stats["blkio_write"].append(get_io(after)[1] - get_io(before)[1])
         stats["netio_read"].append(packet_size(after, "rx_packets") - packet_size(before, "rx_packets"))

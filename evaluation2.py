@@ -13,23 +13,24 @@ def graph1(df):
     df = df.rename(columns={'Name': X})
     plot = sns.barplot(x=X, y=Y, data=df, palette="Set3")
     plot.set_xticklabels(plot.get_xticklabels(), rotation='vertical')
-    plt.savefig("metric-reduction-1.png")
+    plt.savefig("metric-reduction-1.pdf")
 
 def graph2(df):
     X = "Service"
-    Y = "Reduction"
+    Y = "Number of Metrics"
     HUE = "when"
     data = defaultdict(list)
     for _, row in df[["Name", "#Metrics", "Best"]].iterrows():
         data[X].append(row["Name"])
         data[Y].append(row["#Metrics"])
-        data[HUE].append("before")
+        data[HUE].append("#Metrics before Clustering")
         data[X].append(row["Name"])
         data[Y].append(row["Best"])
-        data[HUE].append("after")
+        data[HUE].append("#Metrics after Clustering")
     plot = sns.barplot(x=X, y=Y, hue=HUE, data=pd.DataFrame(data), palette="Set3")
-    plot.set_xticklabels(plot.get_xticklabels(), rotation='vertical')
-    plt.savefig("metric-reduction-2.png")
+    plot.set_xticklabels(plot.get_xticklabels(), rotation=65)
+    plt.subplots_adjust(bottom=0.25)
+    plt.savefig("metric-reduction-2.pdf")
 
 def main():
     df = pd.read_html(sys.argv[1])[0]
