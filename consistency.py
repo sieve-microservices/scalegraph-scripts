@@ -13,6 +13,7 @@ def load_cluster_assignments(measurements):
     for m in measurements:
         data = metadata.load(m)
         for srv in data["services"]:
+            if srv["name"] == "loadgenerator": continue
             assignment = OrderedDict()
             selected = max(srv["clusters"], key=lambda x: srv["clusters"][x]['silhouette_score'])
 
@@ -47,36 +48,34 @@ def main():
     INFO_SCORE = "Mutual Information Score"
     SPLIT_JOIN_A = "Split-Join Index a"
     SPLIT_JOIN_B = "Split-Join Index b"
-    scores = defaultdict(list)
-    for pivot in df.measurement.unique():
-        selected_cluster = df[(df.measurement == pivot) & (df.selected == True)]
-        for _, a in selected_cluster.iterrows():
-            other = df[(df.cluster_size == a.cluster_size) & (df.service == a.service) & (df.measurement != a.measurement)]
-            for _, b in other.iterrows():
-                diff = set(a.assignment.keys()).intersection(set(b.assignment.keys()))
-                assignment_a = list([a.assignment[k] for k in sorted(diff)])
-                assignment_b = list([b.assignment[k] for k in sorted(diff)])
-                score = metrics.adjusted_mutual_info_score(assignment_a, assignment_b)
-                dist_a, dist_b = split_join_distance(assignment_a, assignment_b)
-                scores["service_a"].append(a.service)
-                scores["measurement_a"].append(a.measurement[-1])
-                scores["service_b"].append(a.service)
-                scores["measurement_b"].append(b.measurement)
-                scores[SPLIT_JOIN_A].append(dist_a)
-                scores[SPLIT_JOIN_B].append(dist_b)
-                scores[INFO_SCORE].append(score)
-                scores["service_a"].append(a.service)
-                scores["measurement_a"].append("all")
-                scores["service_b"].append(a.service)
-                scores["measurement_b"].append(b.measurement)
-                scores[SPLIT_JOIN_A].append(dist_a)
-                scores[SPLIT_JOIN_B].append(dist_b)
-                scores[INFO_SCORE].append(score)
 
-    scores_df = pd.DataFrame(scores)
-    distplot(scores_df, INFO_SCORE, "mutual-information-score.png") 
-    distplot(scores_df, SPLIT_JOIN_A, "split-join-index-a.png") 
-    distplot(scores_df, SPLIT_JOIN_B, "split-join-index-b.png") 
+    measurements = df.measurement.unique()
+    df2 = df[df.measurement.isin(measurements) & df.selected]
+
+    df3 = df2.merge(df2, on=["service"], how="inner")
+    df4 = df3[df3.measurement_x != df3.measurement_y]
+    df4["unique"] = df4.apply(lambda row: ", ".join(sorted([row.service, row.measurement_x, row.measurement_y])), axis=1)
+    df5 = df4.drop_duplicates(["unique"])
+    
+    scores = []
+    for _, row in df5.iterrows():
+        diff = set(row.assignment_x.keys()).intersection(set(row.assignment_y.keys()))
+        assignment_x = list([row.assignment_x[k] for k in sorted(diff)])
+        assignment_y = list([row.assignment_y[k] for k in sorted(diff)])
+        scores.append(metrics.adjusted_mutual_info_score(assignment_x, assignment_y))
+    df5[INFO_SCORE] = scores
+
+    for _, combinations in df5.drop_duplicates(["measurement_x", "measurement_y"]).iterrows():
+        x, y = combinations.measurement_x, combinations.measurement_y
+        df6 = df5[(df5.measurement_x == x) & (df5.measurement_y == y)]
+        g = sns.factorplot(x="service", y=INFO_SCORE, data=df6, kind="bar", palette="Set3")
+        g.despine(left=True)
+        g.set_xticklabels(rotation='vertical')
+        plt.subplots_adjust(bottom=0.35, top=0.9)
+        filename = "mutual-information-score-%s-%s.pdf"  % (x[-1], y[-1])
+        g.fig.suptitle("Mutual Information Score between\nMeasurement %s and %s" % (x[-1], y[-1]))
+        print(filename)
+        plt.gcf().savefig(filename)
 
 def parse_args():
     parser = argparse.ArgumentParser(prog='graph', usage='%(prog)s [options]')
