@@ -14,7 +14,17 @@ from graphs import cycle, draw_sbd_bar_plot
 from kshape import _sbd
 import matplotlib.gridspec as gridspec
 
-plt.rcParams.update({"font.family": "normal", "font.size": 40})
+FONT_SIZE=14
+plt.rcParams.update({
+    "font.size": FONT_SIZE,
+    "axes.labelsize" : FONT_SIZE,
+    "font.size" : FONT_SIZE,
+    "text.fontsize" : FONT_SIZE,
+    "legend.fontsize": FONT_SIZE,
+    "xtick.labelsize" : FONT_SIZE * 0.8,
+    "ytick.labelsize" : FONT_SIZE * 0.8,
+    })
+plt.tick_params(labelsize=40)
 
 def load_cluster_assignments(measurements):
     all_measurements = defaultdict(list)
@@ -41,12 +51,12 @@ def draw_series_seperate(df, ax):
     df2 = df.copy()
     for i, c in enumerate(df2.columns):
         df2[c] += 8 * i
-    ax.set_title("Comparision of zscore(t)")
+    ax.set_title("Comparision of zscore(t)", fontsize=FONT_SIZE)
     ax.set_prop_cycle(cycle())
     df2.plot(ax=ax)
     ax.legend().remove()
     ax.yaxis.set_visible(False)
-    ax.set_ylabel("zscore(t)")
+    ax.set_ylabel("zscore(t)", fontsize=FONT_SIZE)
     ax.set_ylim([-2, 8 * (len(df2.columns) + 1)])
 
 def print_cluster(idx, cluster):
@@ -79,14 +89,15 @@ def print_cluster(idx, cluster):
                     .replace("Project_Project", "Project") \
                     .replace("90_percentile", "90%ile") \
                     .replace('http-^\_project\_([^\_]*)\_output\_(_*)$_', "http_output") \
-                    .replace("_id", "")
+                    .replace("_id", "") \
+                    .replace("_", "\_")
         df.rename(columns=new_names, inplace=True)
 
         if len(df.columns) <= 1:
             size -= 1
             continue
         if len(df.columns) > 15:
-           fig = plt.figure(figsize=(17, 5))
+           fig = plt.figure(figsize=(10, 10))
            gs = gridspec.GridSpec(3, 3)
            ax1 = plt.subplot(gs[0:2,  :])
            ax2 = plt.subplot(gs[2, 0])
@@ -102,10 +113,6 @@ def print_cluster(idx, cluster):
         ax2.axis('off')
         if len(df.columns) <= 8:
             ncol = 1
-        elif len(df.columns) >= 20:
-            ncol = 4
-        elif len(df.columns) >= 15:
-            ncol = 3
         else:
             ncol = 2
 
@@ -116,12 +123,11 @@ def print_cluster(idx, cluster):
                 if c == "centroid": continue
                 distances.append(_sbd(df.centroid, df[c])[0])
             draw_sbd_bar_plot(distances, ax3)
-            ax3.set_title("Shape based distance")
+            ax3.set_title("Shape based distance", fontsize=FONT_SIZE)
             ax3.set_ylabel("")
-            ax3.yaxis.tick_right()
 
         image = os.path.basename(name.replace(".tsv.gz", ".pdf"))
-        gs.tight_layout(fig, pad=0)
+        gs.tight_layout(fig, pad=0.05)
         plt.savefig(image, dpi=200)
         plt.close("all")
         imgs += '<img src="%s" alt="%s"></img>\n' % (image, image)

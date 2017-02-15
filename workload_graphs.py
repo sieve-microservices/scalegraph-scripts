@@ -3,8 +3,20 @@ import pandas as pd
 from matplotlib import gridspec
 import numpy as np
 import logparser
+from matplotlib import dates
 
 from plot import plt, sns
+
+FONT_SIZE=25
+plt.rcParams.update({
+    "font.size": FONT_SIZE,
+    "axes.labelsize" : FONT_SIZE,
+    "font.size" : FONT_SIZE,
+    "text.fontsize" : FONT_SIZE,
+    "legend.fontsize": FONT_SIZE,
+    "xtick.labelsize" : FONT_SIZE * 0.8,
+    "ytick.labelsize" : FONT_SIZE * 0.8,
+    })
 
 def add_text(axe, text):
     axe.axis('off')
@@ -69,7 +81,7 @@ def top5_vs_rest_requests(df, filename):
 
 
 def request_rate(df, title, filename):
-    fig, axis = plt.subplots(2, 2, figsize=(15, 5), gridspec_kw={'width_ratios':[3, 1]})
+    fig, axis = plt.subplots(1, 2, figsize=(15, 5), gridspec_kw={'width_ratios':[3, 1]})
     fig.suptitle(title, fontsize=14)
 
     agg = count_request(df)
@@ -86,6 +98,21 @@ def request_rate(df, title, filename):
     fig.savefig(filename)
 
 
+def request_rate2(df, filename):
+    df = df[(df.timestamp > pd.Timestamp("1998-06-02 08:50:00")) & (df.timestamp < pd.Timestamp("1998-06-02 09:50:00"))]
+    plt.clf()
+    agg = count_request(df)
+    minutely = agg.resample("60s").sum()
+    minutely.name = "Requests per minute"
+    xticks = pd.date_range(start=df.iloc[0].timestamp, end=df.iloc[-1].timestamp, freq="15min")
+    fig = minutely.plot(xticks=xticks.to_pydatetime())
+    fig.set_xticklabels([x.strftime('%H:%M') for x in xticks]);
+    #fig.set_title("Request rate for Worldcup 98 (Paris)", fontsize=14)
+    plt.minorticks_off()
+    fig.set_ylabel("Requests per minute [1/min]")
+    plt.gcf().tight_layout()
+    plt.savefig(filename)
+
 def main(type, args):
     logs = []
     if type == "worldcup":
@@ -99,20 +126,21 @@ def main(type, args):
         df = read_log(arg)
         filter_ = df["type"].isin(["HTML", "DYNAMIC", "DIRECTORY"])
         if type == "worldcup":
-            filter_ = filter_ & (df.region == "Paris") & (df.server == 4)
+            filter_ = filter_ & (df.region == "Paris")
         df = df[filter_]
-        df.sort_values("timestamp", inplace=True)
+        df = df.sort_values("timestamp")
         logs.append(df)
     df = pd.concat(logs)
     title = {
       "worldcup": "10 days, request rate for WorldCup98, Paris, Server 4",
       "nasa": "NASA http log, Jul95"
     }
-    if type == "worldcup":
-        top5_vs_rest_requests(df, "top5_vs_rest_requests.png")
-    request_rate(df, title[type], "requests-per-time-%s.png" % type)
-    retention_time(df, "rentention-time-%s.png" % type)
-    user_requests(df, "user-requests-%s.png" % type)
+    #if type == "worldcup":
+    #    top5_vs_rest_requests(df, "top5_vs_rest_requests.png")
+    #request_rate(df, title[type], "requests-per-time-%s.png" % type)
+    request_rate2(df, "requests-per-time-%s-1-hour.pdf" % type)
+    #retention_time(df, "rentention-time-%s.png" % type)
+    #user_requests(df, "user-requests-%s.png" % type)
 
 
 if __name__ == "__main__":
