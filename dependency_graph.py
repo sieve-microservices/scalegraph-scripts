@@ -146,8 +146,8 @@ digraph {
   splines = true
 """)
     for _, row_a, row_b in each_relation(paths):
-        service_a, metric_a = row_a.perpetrator.split("-", 1)
-        service_b, metric_b = row_a.consequence.split("-", 1)
+        service_a, metric_a = row_a.perpetrator_service, row_a.perpetrator_metric
+        service_b, metric_b = row_a.consequence_service, row_a.consequence_metric
         color = "black"
         if row_a.p_for_lag_1 <= significance and row_b.p_for_lag_1 <= significance:
              # skip for the moment
@@ -173,7 +173,7 @@ digraph {
         else:
             continue
         weight = 1 - min(row_a.p_for_lag_1, row_b.p_for_lag_1)
-        args = (service_a, service_b, row_a.perpetrator, symbol, row_a.consequence, weight, regression, quotient, slope, weight, dir, color)
+        args = (service_a, service_b, row_a.perpetrator_metric, symbol, row_a.consequence_metric, weight, regression, quotient, slope, weight, dir, color)
         dot_file.write('  "%s" -> "%s" [tooltip="%s %s %s (granger-causality (p-value): %f, regression (p-value): %f, quotient: %f, slope: %f)",penwidth=%.3f,dir=%s,color=%s]\n' % args)
     dot_file.write("}")
 
