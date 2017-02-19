@@ -8,6 +8,17 @@ import os
 from sklearn import metrics
 #from igraph import split_join_distance
 
+FONT_SIZE=25
+plt.rcParams.update({
+    "font.size": FONT_SIZE,
+    "axes.labelsize" : FONT_SIZE,
+    "font.size" : FONT_SIZE,
+    "text.fontsize" : FONT_SIZE,
+    "legend.fontsize": FONT_SIZE,
+    "xtick.labelsize" : FONT_SIZE * 0.8,
+    "ytick.labelsize" : FONT_SIZE * 0.8,
+    })
+
 def load_cluster_assignments(measurements):
     all_measurements = defaultdict(list)
     for m in measurements:
@@ -76,11 +87,14 @@ def main():
                   (df6.service != "filestore") &
                   (df6.service != "mongodb")]
         df6 = df6.rename(columns={"service": SERVICES})
-        sns.set_palette(sns.color_palette(palette="gray", n_colors=12, desat=0.5))
-        g = sns.factorplot(x=SERVICES, y=INFO_SCORE, data=df6, kind="bar")
+        g = sns.factorplot(x=SERVICES,
+                           y=INFO_SCORE,
+                           data=df6,
+                           kind="bar",
+                           palette=sns.color_palette(palette="gray", n_colors=6, desat=0.5))
         g.despine(left=True)
         g.set_xticklabels(rotation=65, ha="right")
-        plt.subplots_adjust(bottom=0.35, top=0.9)
+        plt.subplots_adjust(bottom=0.35, top=0.85)
 
         filename = "mutual-information-score-%s-%s.pdf"  % (x[-1], y[-1])
         g.fig.suptitle("AMI between\nmeasurement %s and %s" % (x[-1], y[-1]))

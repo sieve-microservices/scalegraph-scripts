@@ -11,9 +11,20 @@ def graph1(df):
     Y = "Reduction [%]"
     df[Y] = ((df["#Metrics"] - df["Best"]) / df["#Metrics"])
     df = df.rename(columns={'Name': X})
-    plot = sns.barplot(x=X, y=Y, data=df, palette="Set3")
+    plot = sns.barplot(x=X, y=Y, data=df, color="k")
     plot.set_xticklabels(plot.get_xticklabels(), rotation='vertical')
     plt.savefig("metric-reduction-1.pdf")
+
+FONT_SIZE=30
+plt.rcParams.update({
+    "font.size": FONT_SIZE,
+    "axes.labelsize" : FONT_SIZE,
+    "font.size" : FONT_SIZE,
+    "text.fontsize" : FONT_SIZE,
+    "legend.fontsize": FONT_SIZE * 0.75,
+    "xtick.labelsize" : FONT_SIZE,
+    "ytick.labelsize" : FONT_SIZE,
+    })
 
 def graph2(df):
     X = "Service"
@@ -29,13 +40,12 @@ def graph2(df):
         data[X].append(row["Name"])
         data[Y].append(row["Best"])
         data[HUE].append("After clustering")
-    sns.set(font_scale=1.5)
-    plot = sns.barplot(x=X, y=Y, hue=HUE, data=pd.DataFrame(data), palette="Set3")
-    plt.legend(title='Number of metrics')
+    plot = sns.barplot(x=X, y=Y, hue=HUE, data=pd.DataFrame(data), palette="gray")
+    plt.legend(title='Number of metrics', loc='upper right')
     plt.ylabel("Number of metrics")
-    plot.set_xticklabels(plot.get_xticklabels(), rotation=65)
+    plot.set_xticklabels(plot.get_xticklabels(), rotation=65, ha="right")
     plt.tight_layout()
-    plt.subplots_adjust(bottom=0.25)
+    plt.subplots_adjust(bottom=0.37)
     plt.savefig("metric-reduction-2.pdf", dpi=300)
 
 def main():

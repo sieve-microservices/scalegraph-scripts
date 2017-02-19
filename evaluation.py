@@ -10,15 +10,15 @@ def parse_args():
     parser.add_argument('tsv', help="benchmark data")
     return parser.parse_args()
 
-FONT_SIZE=25
+FONT_SIZE=30
 plt.rcParams.update({
     "font.size": FONT_SIZE,
     "axes.labelsize" : FONT_SIZE,
     "font.size" : FONT_SIZE,
     "text.fontsize" : FONT_SIZE,
     "legend.fontsize": FONT_SIZE,
-    "xtick.labelsize" : FONT_SIZE * 0.8,
-    "ytick.labelsize" : FONT_SIZE * 0.8,
+    "xtick.labelsize" : FONT_SIZE * 0.9,
+    "ytick.labelsize" : FONT_SIZE,
     })
 
 # TODO get blkio
@@ -43,10 +43,10 @@ def main():
             data[X].append(translate[c])
             data[Y].append(row.min())
     plt.clf()
-    #sns.set_palette(sns.color_palette(palette="gray", n_colors=4, desat=0.4))
+    sns.set_palette(sns.color_palette(palette="gray", n_colors=4, desat=0.4))
     plot = sns.barplot(x=X, y=Y, data=pd.DataFrame(data))
-    rescale_barplot_width(plot, color="k")
-    plt.ylabel(r"$\frac{\text{Value of reduced metric}}{\text{All metrics}}$", fontsize=24)
+    rescale_barplot_width(plot)
+    plt.ylabel(r"$\frac{\text{Value of reduced metric}}{\text{All metrics}}$", fontsize=FONT_SIZE*1.5)
     plt.tight_layout()
     plt.savefig("measurement-reduction.pdf", dpi=300)
 

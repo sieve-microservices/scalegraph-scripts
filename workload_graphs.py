@@ -105,7 +105,7 @@ def request_rate2(df, filename):
     minutely = agg.resample("60s").sum()
     minutely.name = "Requests per minute"
     xticks = pd.date_range(start=df.iloc[0].timestamp, end=df.iloc[-1].timestamp, freq="15min")
-    fig = minutely.plot(xticks=xticks.to_pydatetime())
+    fig = minutely.plot(xticks=xticks.to_pydatetime(), color="k")
     fig.set_xticklabels([x.strftime('%H:%M') for x in xticks]);
     #fig.set_title("Request rate for Worldcup 98 (Paris)", fontsize=14)
     plt.minorticks_off()

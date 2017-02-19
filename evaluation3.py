@@ -6,18 +6,18 @@ import sys
 import os
 from collections import defaultdict
 
-TIME="Time to complete 10,000 requests"
+TIME="Time to complete\n10,000 requests"
 TYPE="Type"
 
-FONT_SIZE=25
+FONT_SIZE=30
 plt.rcParams.update({
   "font.size": FONT_SIZE,
   "axes.labelsize" : FONT_SIZE,
   "font.size" : FONT_SIZE,
   "text.fontsize" : FONT_SIZE,
   "legend.fontsize": FONT_SIZE,
-  "xtick.labelsize" : FONT_SIZE * 0.8,
-  "ytick.labelsize" : FONT_SIZE * 0.8,
+  "xtick.labelsize" : FONT_SIZE,
+  "ytick.labelsize" : FONT_SIZE,
 })
 
 def main():
