@@ -1,9 +1,11 @@
 from plot import plt, sns, rescale_barplot_width
 import matplotlib as mpl
+from matplotlib.ticker import FormatStrFormatter
 import pandas as pd
 import argparse
 import numpy as np
 from collections import defaultdict
+import statsmodels.stats.api as sms
 
 def parse_args():
     parser = argparse.ArgumentParser(prog='graph', usage='%(prog)s [options]')
@@ -25,30 +27,51 @@ plt.rcParams.update({
 # columns = ['blkio_read', 'blkio_write', 'cpu_usage', 'db_size','netio_read', 'netio_write']
 columns = ['cpu_usage', 'db_size','netio_read', 'netio_write']
 translate = {
-        'cpu_usage' : "CPU time",
-        'db_size': "DB size",
-        'netio_read': "Incoming\ntraffic",
-        'netio_write': "Outgoing\ntraffic",
+        'cpu_usage' : "CPU time [s]",
+        'db_size': "DB size [KB]",
+        'netio_read': "Traffic In [MB]",
+        'netio_write': "Traffic Out [KB]",
 }
 
 X = "Metric"
-Y = "Value for reduced metrics / Value of all metrics"
+Y = "Reduction [%]"
+A = "Before"
+B = "After"
+
+def mean_and_confidence(x):
+    mean = x.mean()
+    interval = mean - sms.DescrStatsW(x).tconfint_mean()[0]
+    format = "%s (±%s)" % (("%.1f" if mean < 1e4 else "%.3e"),
+                       ("%.1f" if interval < 1e4 else "%.1e"))
+    return format % (mean, interval)
 
 def main():
     args = parse_args()
     df = pd.read_csv(args.tsv, sep="\t")
     data = defaultdict(list)
+    c = ["netio_write_reduced", "netio_write_native"]
+    df[c] = df[c].apply(lambda x: x / 1e3) # KB
+    c = ["netio_read_reduced", "netio_read_native"]
+    df[c] = df[c].apply(lambda x: x / 1e6) # MB
+
     for c in columns:
-        for row in np.nditer(df[c + "_reduced"] / df[c + "_native"]):
+        for i, row in enumerate(np.nditer(1 - df[c + "_reduced"] / df[c + "_native"] * 100)):
             data[X].append(translate[c])
+            data[A].append(df[c + "_native"][i])
+            data[B].append(df[c + "_reduced"][i])
             data[Y].append(row.min())
-    plt.clf()
-    sns.set_palette(sns.color_palette(palette="gray", n_colors=4, desat=0.4))
-    plot = sns.barplot(x=X, y=Y, data=pd.DataFrame(data))
-    rescale_barplot_width(plot)
-    plt.ylabel(r"$\frac{\text{Value of reduced metric}}{\text{All metrics}}$", fontsize=FONT_SIZE*1.5)
-    plt.tight_layout()
-    plt.savefig("measurement-reduction.pdf", dpi=300)
+    df2 = pd.DataFrame(data)
+    df3 = df2.groupby("Metric").agg({A: mean_and_confidence, B: mean_and_confidence, Y: mean_and_confidence})
+    df3 = df3[[A, B, Y]]
+    print(df3.to_latex().replace("±", "$\pm$"))
+    #plt.clf()
+    #sns.set_palette(sns.color_palette(palette="gray", n_colors=4, desat=0.4))
+    #plot = sns.barplot(x=X, y=Y, data=pd.DataFrame(data))
+    #rescale_barplot_width(plot)
+    #plt.ylabel(r"$\frac{\text{Value of reduced metric}}{\text{All metrics}}$", fontsize=FONT_SIZE)
+    #plot.yaxis.set_units('%')
+    #plt.tight_layout()
+    #plt.savefig("measurement-reduction.pdf", dpi=300)
 
 if __name__ == "__main__":
     main()
