@@ -38,13 +38,6 @@ Y = "Reduction [%]"
 A = "Before"
 B = "After"
 
-def mean_and_confidence(x):
-    mean = x.mean()
-    interval = mean - sms.DescrStatsW(x).tconfint_mean()[0]
-    format = "%s (±%s)" % (("%.1f" if mean < 1e4 else "%.3e"),
-                       ("%.1f" if interval < 1e4 else "%.1e"))
-    return format % (mean, interval)
-
 def main():
     args = parse_args()
     df = pd.read_csv(args.tsv, sep="\t")
@@ -55,13 +48,13 @@ def main():
     df[c] = df[c].apply(lambda x: x / 1e6) # MB
 
     for c in columns:
-        for i, row in enumerate(np.nditer(1 - df[c + "_reduced"] / df[c + "_native"] * 100)):
+        for i, row in enumerate(np.nditer(100 - df[c + "_reduced"] / df[c + "_native"] * 100)):
             data[X].append(translate[c])
             data[A].append(df[c + "_native"][i])
             data[B].append(df[c + "_reduced"][i])
             data[Y].append(row.min())
     df2 = pd.DataFrame(data)
-    df3 = df2.groupby("Metric").agg({A: mean_and_confidence, B: mean_and_confidence, Y: mean_and_confidence})
+    df3 = df2.groupby("Metric").agg({A: "mean", B: "mean", Y: "mean"})
     df3 = df3[[A, B, Y]]
     print(df3.to_latex().replace("±", "$\pm$"))
     #plt.clf()

@@ -6,7 +6,6 @@ from collections import defaultdict, OrderedDict
 import metadata
 import os
 from sklearn import metrics
-#from igraph import split_join_distance
 
 FONT_SIZE=25
 plt.rcParams.update({
@@ -18,6 +17,12 @@ plt.rcParams.update({
     "xtick.labelsize" : FONT_SIZE * 0.8,
     "ytick.labelsize" : FONT_SIZE * 0.8,
     })
+
+SERVICE_TABLE = {
+  "track-changes": "track-ch.",
+  "doc-updater":  "doc-upd.",
+  "postgresql":  "postgres",
+}
 
 def load_cluster_assignments(measurements):
     all_measurements = defaultdict(list)
@@ -40,10 +45,11 @@ def load_cluster_assignments(measurements):
                     all_columns.extend(columns)
                 assignment = OrderedDict(sorted(zip(all_columns, all_clusters)))
                 all_measurements["measurement"].append(m)
-                all_measurements["service"].append(srv["name"])
+                all_measurements["service"].append(SERVICE_TABLE.get(srv["name"], srv["name"]))
                 all_measurements["cluster_size"].append(int(k))
                 all_measurements["assignment"].append(assignment)
                 all_measurements["selected"].append(k == selected)
+                all_measurements["silhouette_score"].append(srv["clusters"][k]["silhouette_score"])
     return pd.DataFrame(all_measurements)
 
 def distplot(df, column, filename):
@@ -57,7 +63,7 @@ def distplot(df, column, filename):
 def main():
     args = parse_args()
     df = load_cluster_assignments(args.measurements)
-    SERVICES="Services"
+    SERVICES = "Services"
     INFO_SCORE = "AMI"
     SPLIT_JOIN_A = "Split-Join Index a"
     SPLIT_JOIN_B = "Split-Join Index b"
@@ -77,6 +83,23 @@ def main():
         assignment_y = list([row.assignment_y[k] for k in sorted(diff)])
         scores.append(metrics.adjusted_mutual_info_score(assignment_x, assignment_y))
     df5[INFO_SCORE] = scores
+    data = defaultdict(list)
+    for _, combinations in df5.drop_duplicates(["measurement_x", "measurement_y"]).iterrows():
+        x, y = combinations.measurement_x, combinations.measurement_y
+        df6 = df5[(df5.measurement_x == x) & (df5.measurement_y == y)]
+        #df6 = df6.rename(columns={"service": SERVICES})
+        for service in df["service"]:
+            data[SERVICES].append(service)
+            data["measurements"].append("(%s,%s)" % (x[-1], y[-1]))
+            data[INFO_SCORE].append(df6[df6.service == service][INFO_SCORE].iloc[0])
+            data["silhouette_score_x"].append(df6[df6.service == service]["silhouette_score_x"].iloc[0])
+            data["silhouette_score_y"].append(df6[df6.service == service]["silhouette_score_y"].iloc[0])
+    df7 = pd.DataFrame(data)
+
+    ## Print table
+    #df7[INFO_SCORE] = df7.apply(lambda row: "%.2f (%.2f/%.2f)" % (row[INFO_SCORE], row["silhouette_score_x"], row["silhouette_score_y"]), axis=1)
+    #df8 = df7.groupby(["measurements", "Services"]).first().unstack(0)
+    #print(df8[INFO_SCORE].to_latex())
 
     sns.set(font_scale=1.3)
     sns.set_style("whitegrid")
@@ -94,10 +117,9 @@ def main():
                            palette=sns.color_palette(palette="gray", n_colors=6, desat=0.5))
         g.despine(left=True)
         g.set_xticklabels(rotation=65, ha="right")
-        plt.subplots_adjust(bottom=0.35, top=0.85)
-
         filename = "mutual-information-score-%s-%s.pdf"  % (x[-1], y[-1])
-        g.fig.suptitle("AMI between\nmeasurement %s and %s" % (x[-1], y[-1]))
+        g.fig.suptitle("AMI(%s, %s)" % (x[-1], y[-1]))
+        g.set(xlabel="")
         print(filename)
         plt.gcf().savefig(filename, dpi=300)
 

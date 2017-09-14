@@ -125,8 +125,8 @@ def benchmark_import(stats, path, reduced_set=False):
         stats["cpu_usage"].append(after["cpu_stats"]["cpu_usage"]["total_usage"] - before["cpu_stats"]["cpu_usage"]["total_usage"])
         stats["blkio_read"].append(get_io(after)[0] - get_io(before)[0])
         stats["blkio_write"].append(get_io(after)[1] - get_io(before)[1])
-        stats["netio_read"].append(packet_size(after, "rx_packets") - packet_size(before, "rx_packets"))
-        stats["netio_write"].append(packet_size(after, "tx_packets") - packet_size(before, "tx_packets"))
+        stats["netio_read"].append(packet_size(after, "rx_bytes") - packet_size(before, "rx_bytes"))
+        stats["netio_write"].append(packet_size(after, "tx_bytes") - packet_size(before, "tx_bytes"))
         stats["db_size"].append(after_size - before_size)
 
 def main():

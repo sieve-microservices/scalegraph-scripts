@@ -8,3 +8,4 @@ jinja2
 sklearn
 ipyparallel
 influxdb
+docker-py

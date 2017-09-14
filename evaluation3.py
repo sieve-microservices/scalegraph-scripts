@@ -6,7 +6,7 @@ import sys
 import os
 from collections import defaultdict
 
-TIME="Time to complete\n10,000 requests"
+TIME="Time to complete\n10k requests [s]"
 TYPE="Type"
 
 FONT_SIZE=30
@@ -23,11 +23,12 @@ plt.rcParams.update({
 def main():
     df = pd.read_csv(sys.argv[1])
     df.rename(columns={"time": TIME, "type": TYPE}, inplace=True)
+    #print(df.groupby(TYPE).mean().to_latex())
     sns.set_palette(sns.color_palette(palette="gray", n_colors=3, desat=0.4))
     plot = sns.barplot(x=TYPE, y=TIME, data=df)
     rescale_barplot_width(plot, 0.6)
 
-    plt.ylabel(TIME)
+    plot.set(xlabel="", ylabel=TIME)
     plt.tight_layout()
     plt.savefig("time-overhead-sysdig.pdf")
 

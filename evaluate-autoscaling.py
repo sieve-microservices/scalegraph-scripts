@@ -60,8 +60,21 @@ def scaling(df):
     return t[t.scale.diff() != 0]
 
 def sla_violations(df):
-    t = df[df["requeusts_success_90%ile"] > 1000]
+    t = df[df["requeusts_success_90%ile"] > 1500]
     return t["requeusts_success_90%ile"].count()
+
+USUAGE="CPU Usage"
+SLA="SLA violations\\(out of 1400 samples)"
+SCALING_ACTIONS="Number of\\ scaling actions"
+A="Default metric"
+B="Sieve metric"
+C="Difference [%]"
+
+def format_float(v):
+    if v == int(v):
+        return str(int(v))
+    else:
+        return "%.2f" % v
 
 def main():
     args = parse_args()
@@ -76,19 +89,19 @@ def main():
     requests_cpu = df_http[df_http["requeusts_success_90%ile"].notnull()]
     requests_http = df_cpu[df_cpu["requeusts_success_90%ile"].notnull()]
 
-    graph = defaultdict(list)
-    t = "Aspect"
-    v = "Relative improvement when \nusing SIEVE metrics [\%]"
-    graph[t].append("CPU utilisation")
-    graph[v].append((usage_http.usage_percent.mean() / usage_cpu.usage_percent.mean()) * 100)
-    graph[t].append("SLA\nviolations")
-    graph[v].append((sla_violations(requests_http) / sla_violations(requests_cpu)) * 100)
-    graph[t].append("Number of\nscaling actions")
-    graph[v].append((scaling_http.scale.count() / scaling_cpu.scale.count()) * 100)
-
-    sns.set_palette(sns.color_palette(palette="gray", n_colors=3, desat=0.4))
-    g = sns.factorplot(x=t, y=v, kind="bar", data=pd.DataFrame(graph), aspect=2)
-    plt.savefig("autoscaling-evaluation.pdf", dpi=300)
+    graph = defaultdict(list) # type: defaultdict[str, List]
+    def append_metric(name, before, after):
+        graph["metric"].append(name)
+        graph[A].append(before)
+        graph[B].append(after)
+        graph[C].append((after - before)/before * 100)
+    append_metric(USUAGE, usage_cpu.usage_percent.mean(), usage_http.usage_percent.mean())
+    append_metric(SLA, sla_violations(requests_cpu), sla_violations(requests_http))
+    append_metric(SCALING_ACTIONS, scaling_cpu.scale.count(), scaling_http.scale.count())
+    df = pd.DataFrame(graph)
+    df = df[["metric", A, B, C]].set_index("metric")
+    table = df.to_latex(float_format=format_float, formatters={C: lambda v: ("+" if v > 0 else "") + format_float(v)})
+    print(table)
 
 if __name__ == "__main__":
     main()

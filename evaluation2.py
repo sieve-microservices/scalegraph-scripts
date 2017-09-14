@@ -15,15 +15,20 @@ def graph1(df):
     plot.set_xticklabels(plot.get_xticklabels(), rotation='vertical')
     plt.savefig("metric-reduction-1.pdf")
 
+SERVICE_TABLE = {
+  "track-changes": "track-ch.",
+  "doc-updater":  "doc-upd.",
+}
+
 FONT_SIZE=30
 plt.rcParams.update({
     "font.size": FONT_SIZE,
     "axes.labelsize" : FONT_SIZE,
     "font.size" : FONT_SIZE,
     "text.fontsize" : FONT_SIZE,
-    "legend.fontsize": FONT_SIZE * 0.75,
-    "xtick.labelsize" : FONT_SIZE,
-    "ytick.labelsize" : FONT_SIZE,
+    "legend.fontsize": FONT_SIZE * 0.7,
+    "xtick.labelsize" : FONT_SIZE * 0.8,
+    "ytick.labelsize" : FONT_SIZE * 0.8,
     })
 
 def graph2(df):
@@ -34,18 +39,20 @@ def graph2(df):
     for _, row in df[["Name", "#Metrics", "Best"]].iterrows():
         if row["Name"] in ["loadgenerator", "track-changes", "web"]:
             continue
-        data[X].append(row["Name"])
+        data[X].append(SERVICE_TABLE.get(row["Name"], row["Name"]))
         data[Y].append(row["#Metrics"])
         data[HUE].append("Before clustering")
-        data[X].append(row["Name"])
+        data[X].append(SERVICE_TABLE.get(row["Name"], row["Name"]))
         data[Y].append(row["Best"])
         data[HUE].append("After clustering")
     plot = sns.barplot(x=X, y=Y, hue=HUE, data=pd.DataFrame(data), palette="gray")
-    plt.legend(title='Number of metrics', loc='upper right')
-    plt.ylabel("Number of metrics")
+    plot.set_yscale("log")
+    plt.legend(title='',
+               bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plot.set(ylabel="Number of metrics", xlabel="")
     plot.set_xticklabels(plot.get_xticklabels(), rotation=65, ha="right")
     plt.tight_layout()
-    plt.subplots_adjust(bottom=0.37)
     plt.savefig("metric-reduction-2.pdf", dpi=300)
 
 def main():
